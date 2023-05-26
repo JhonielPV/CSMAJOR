@@ -1,0 +1,158 @@
+import pygame
+from constants import button_image, window_screen, screen_col
+
+from animations import menu_boxer_1, menu_boxer_2, player_one_idle, player_one_forward, player_one_backward, player_one_hurt, player_two_idle, player_one_attack, player_two_forward, player_two_backward, player_two_attack, player_two_hurt
+
+player1_punches = []
+player2_punches = []
+player_one_health, player_two_health = 10, 10
+
+
+index, player_one_speed, player_two_speed  = 0, 0, 0 
+
+player_one_hit = pygame.USEREVENT + 1
+player_two_hit = pygame.USEREVENT + 2
+
+def main_screen(game_started, player_one, player_two, game_pause, game_end):
+    window_screen.fill(screen_col)
+
+    global index, player_one_speed, player_two_speed, player_one_health, player_two_health
+
+    player_one_speed += 0.2
+    player_two_speed += 0.2
+    index += 0.2
+
+
+    if game_started and not game_pause:   
+        player_one_move = player_one_action(player_one, player_two)
+        player_two_move = player_two_action(player_two, player_one) 
+        
+        player_one_is_hit = player_two_punches_hit(player_one, player_two_move, player_two)
+
+        player_two_is_hit = player_one_punches_hit(player_one, player_one_move, player_two)
+
+        # player one action
+        if player_one_move == player_one_attack:
+        
+            if player_one_speed >= len(menu_boxer_1):
+                player_one_speed = 0
+            player_one_speed = 4
+            window_screen.blit(player_one_action(player_one, player_two)[int(player_one_speed)], (player_one.x, player_one.y))
+        elif player_one_is_hit:
+            player_one_health -= 1
+            if player_one.x != -36:
+                player_one.x -= 1
+
+            if player_one_speed >= len(menu_boxer_2):
+                player_one_speed = 0
+                
+            player_one_speed = 4.2
+
+            window_screen.blit(player_one_hurt[int(player_one_speed)], (player_one.x, player_one.y))
+        else:
+            if index >= len(menu_boxer_1):
+                index = 0
+            player_two_is_hit = False
+            window_screen.blit(player_one_action(player_one, player_two)[int(index)], (player_one.x, player_one.y))
+        
+        # player two action
+        if player_two_move == player_two_attack:
+            if player_two_speed >= len(menu_boxer_2):
+                player_two_speed = 0
+            player_two_speed = 4
+            window_screen.blit(player_two_action(player_two, player_one)[int(player_two_speed)], (player_two.x, player_two.y))
+        elif player_two_is_hit:
+            player_two_health -= 1
+            
+            if player_two.x != 748:
+                player_two.x += 0.5
+
+            if player_two_speed >= len(menu_boxer_2):
+                player_two_speed = 0
+            player_two_speed = 4.2
+            window_screen.blit(player_two_hurt[int(player_two_speed)], (player_two.x, player_two.y))
+        else:
+            if index >= len(menu_boxer_1):
+                index = 0
+            window_screen.blit(player_two_action(player_two, player_one)[int(index)], (player_two.x, player_two.y))
+        
+
+    elif game_pause and game_started:
+        window_screen.blit(player_one_idle[0], (player_one.x, player_one.y))
+        window_screen.blit(player_two_idle[0], (player_two.x, player_two.y))
+    elif game_end:
+        pass
+    else:
+        if index >= len(menu_boxer_1) or index >= len(menu_boxer_2):
+            index = 0
+        window_screen.blit(menu_boxer_1[int(index)], (180, 70))
+        window_screen.blit(menu_boxer_2[int(index)], (380, 70))
+        window_screen.blit(button_image, (250, 300))
+       
+    pygame.display.update()
+
+def player_one_action(boxer, player_two):
+  
+    jab = 0
+    key_pressed = pygame.key.get_pressed()
+   
+    if key_pressed[pygame.K_a] and boxer.x != -36:
+        boxer.x -= 1
+        move = player_one_forward
+    elif key_pressed[pygame.K_d] and boxer.x != 748 and boxer.x != player_two.x - 100:
+        boxer.x += 1
+        move = player_one_backward
+    elif key_pressed[pygame.K_g]:
+        move = player_one_attack
+
+        punch = pygame.Rect(
+        boxer.x + 128, boxer.y + boxer.height//2 - 2,  10, 5)
+        player1_punches.append(punch)
+    else:
+        move = player_one_idle
+    return move
+
+def player_two_action(boxer, player_one):
+    key_pressed = pygame.key.get_pressed()
+    if key_pressed[pygame.K_j] and boxer.x != -36 and boxer.x != player_one.x + 100:
+        boxer.x -= 1
+        move = player_two_forward
+    elif key_pressed[pygame.K_l] and boxer.x != 748:
+        boxer.x += 1
+        move = player_two_backward
+    elif key_pressed[pygame.K_p]:
+        move = player_two_attack
+        
+        punch = pygame.Rect(
+        boxer.x, boxer.y + boxer.height//2 - 2,  10, 5)
+        player1_punches.append(punch)
+    else:
+        move = player_two_idle
+    return move
+
+
+def player_one_punches_hit(player_one, player_1_attack, player_two):
+    punch = pygame.Rect(
+    player_one.x - 50 + player_one.width, player_one.y + player_one.height//2 - 2, 10, 5)
+  
+
+    if player_two.colliderect(punch) and player_1_attack ==  player_one_attack:
+        pygame.event.post(pygame.event.Event(player_two_hit))
+
+        return True
+    else:
+        return False
+    
+def player_two_punches_hit(player_one, player_2_attack, player_two):
+    punch = pygame.Rect(
+    player_two.x - 105 + player_two.width, player_two.y + player_two.height//2 - 2, 10, 5)
+     
+    if player_one.colliderect(punch) and player_2_attack ==  player_two_attack:
+        pygame.event.post(pygame.event.Event(player_one_hit))
+        return True
+    else:
+        return False
+
+
+  
+        
